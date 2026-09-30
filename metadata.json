@@ -1,0 +1,8 @@
+{
+  "name": "Nova Remote",
+  "description": "Minimalist, high-performance Android TV & Mi Stick remote control with Universal Push to TV share-sheet integration, YouTube Ad skipper, and gesture touchpad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
+
