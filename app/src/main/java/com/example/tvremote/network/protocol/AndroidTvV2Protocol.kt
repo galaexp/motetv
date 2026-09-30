@@ -68,7 +68,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
                 controlInput = ctrlSock.inputStream
 
                 val configureBytes = PoloProtocolHelper.buildRemoteConfigure()
-                PoloProtocolHelper.writeFramed(controlOutput!!, configureBytes)
+                PoloProtocolHelper.writeVarintFramed(controlOutput!!, configureBytes)
 
                 connected = true
                 Log.i(tag, "Successfully established direct control session on port 6466")
@@ -79,11 +79,11 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
             }
         }
 
-        // 2. Perform Polo pairing handshake on port 6467 with standard "atvremote" v2
+        // 2. Perform Polo pairing handshake on port 6467 with standard "androidtv-remote" (v2)
         val pairingResult = executePairingHandshake(
             device = device,
             sslFactory = sslFactory,
-            serviceName = "atvremote",
+            serviceName = "androidtv-remote",
             protocolVersion = 2,
             onPairingRequired = onPairingRequired
         )
@@ -91,31 +91,16 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
             return@withContext pairingResult
         }
 
-        // 3. Fallback: retry with "atvremote" v1 and "androidtvremote"
-        Log.w(tag, "First pairing attempt with atvremote v2 failed. Retrying with atvremote v1...")
-        disconnect()
-        try { Thread.sleep(300) } catch (_: Exception) {}
-
-        val fallback1 = executePairingHandshake(
-            device = device,
-            sslFactory = sslFactory,
-            serviceName = "atvremote",
-            protocolVersion = 1,
-            onPairingRequired = onPairingRequired
-        )
-        if (fallback1.isSuccess) {
-            return@withContext fallback1
-        }
-
-        Log.w(tag, "Second pairing attempt failed. Retrying with service name 'androidtvremote'...")
+        // 3. Fallback: retry with "atvremote" (v2)
+        Log.w(tag, "First pairing attempt with androidtv-remote failed. Retrying with atvremote...")
         disconnect()
         try { Thread.sleep(300) } catch (_: Exception) {}
 
         return@withContext executePairingHandshake(
             device = device,
             sslFactory = sslFactory,
-            serviceName = "androidtvremote",
-            protocolVersion = 1,
+            serviceName = "atvremote",
+            protocolVersion = 2,
             onPairingRequired = onPairingRequired
         )
     }
@@ -288,7 +273,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
 
             // Send configure message
             val configureBytes = PoloProtocolHelper.buildRemoteConfigure()
-            PoloProtocolHelper.writeFramed(controlOutput!!, configureBytes)
+            PoloProtocolHelper.writeVarintFramed(controlOutput!!, configureBytes)
 
             connected = true
             Log.i(tag, "Connected and ready to control ${dev.name}!")
@@ -311,7 +296,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
 
         try {
             val packet = PoloProtocolHelper.buildKeyInject(keyCode = keyCode, direction = 1)
-            PoloProtocolHelper.writeFramed(out, packet)
+            PoloProtocolHelper.writeVarintFramed(out, packet)
             Log.d(tag, "Sent key inject keyCode=$keyCode for command=$command")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -328,7 +313,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
                 val keyCode = charToAndroidKeyCode(ch)
                 if (keyCode != -1) {
                     val packet = PoloProtocolHelper.buildKeyInject(keyCode = keyCode, direction = 1)
-                    PoloProtocolHelper.writeFramed(out, packet)
+                    PoloProtocolHelper.writeVarintFramed(out, packet)
                     Thread.sleep(25)
                 }
             }
@@ -354,7 +339,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
         try {
             val deepLink = "https://play.google.com/store/apps/details?id=$packageName"
             val appLinkPacket = PoloProtocolHelper.buildAppLink(deepLink)
-            PoloProtocolHelper.writeFramed(out, appLinkPacket)
+            PoloProtocolHelper.writeVarintFramed(out, appLinkPacket)
             Log.i(tag, "Launched app: $packageName via AppLink")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -367,7 +352,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
         val out = controlOutput ?: return@withContext Result.failure(IllegalStateException("Not connected"))
         try {
             val appLinkPacket = PoloProtocolHelper.buildAppLink(url)
-            PoloProtocolHelper.writeFramed(out, appLinkPacket)
+            PoloProtocolHelper.writeVarintFramed(out, appLinkPacket)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -379,7 +364,7 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
         try {
             val start = System.currentTimeMillis()
             val pingBytes = PoloProtocolHelper.buildPing()
-            PoloProtocolHelper.writeFramed(out, pingBytes)
+            PoloProtocolHelper.writeVarintFramed(out, pingBytes)
             System.currentTimeMillis() - start
         } catch (e: Exception) {
             -1L

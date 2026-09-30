@@ -245,7 +245,8 @@ fun RemoteScreen(
                             onDisconnect = { viewModel.disconnect() },
                             onDeleteSavedDevice = { viewModel.deleteSavedDevice(it) },
                             onUpdateSettings = { viewModel.updateSettings(it) },
-                            onOpenPush = { viewModel.openPushDialog() }
+                            onOpenPush = { viewModel.openPushDialog() },
+                            onResetPairing = { viewModel.resetTvPairing() }
                         )
                     }
                 }

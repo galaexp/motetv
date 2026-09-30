@@ -32,6 +32,7 @@ import com.example.tvremote.domain.model.TvDevice
 import com.example.tvremote.network.client.TvRemoteManager
 import com.example.tvremote.network.discovery.BluetoothDiscoveryManager
 import com.example.tvremote.network.discovery.NsdDiscoveryManager
+import com.example.tvremote.network.protocol.TvCertificateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -251,6 +252,19 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun disconnect() {
         remoteManager.disconnect()
         triggerHaptic()
+    }
+
+    fun resetTvPairing() {
+        viewModelScope.launch {
+            disconnect()
+            TvCertificateManager(context).resetCredentials()
+            val saved = savedDevices.value
+            for (dev in saved) {
+                deviceRepo.markPaired(dev.id, false)
+            }
+            triggerHaptic()
+            startDiscovery()
+        }
     }
 
     fun sendCommand(command: RemoteCommand) {

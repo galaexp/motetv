@@ -101,6 +101,7 @@ fun SettingsScreen(
     onDeleteSavedDevice: (String) -> Unit,
     onUpdateSettings: (RemoteSettings) -> Unit,
     onOpenPush: () -> Unit = {},
+    onResetPairing: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showManualIp by remember { mutableStateOf(false) }
@@ -668,7 +669,55 @@ fun SettingsScreen(
             }
         }
 
-        // 8. About & Diagnostics
+        // 8. Security & Pairing Identity Reset
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color(0x0A000000))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(IosGlassCard)
+                    .border(1.dp, IosGlassBorderHighlight, RoundedCornerShape(20.dp))
+                    .padding(16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(IosSystemOrange.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, tint = IosSystemOrange, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Reset TV Pairing & Certificates", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = IosTextPrimary)
+                            Text("Delete stored RSA identity to start fresh pairing", fontSize = 11.sp, color = IosTextSecondary)
+                        }
+                    }
+
+                    Text(
+                        text = "If your TV rejected previous pairing requests, clearing the certificate and resetting pairing will generate fresh cryptographic credentials.",
+                        fontSize = 11.5.sp,
+                        color = IosTextSecondary,
+                        lineHeight = 16.sp
+                    )
+
+                    Button(
+                        onClick = onResetPairing,
+                        colors = ButtonDefaults.buttonColors(containerColor = IosSystemOrange.copy(alpha = 0.15f), contentColor = IosSystemOrange),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(40.dp).testTag("btn_reset_pairing")
+                    ) {
+                        Text("Reset TV Pairing & Start Fresh", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // 9. About & Diagnostics
         item {
             Box(
                 modifier = Modifier

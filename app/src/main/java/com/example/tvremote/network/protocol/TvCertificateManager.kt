@@ -167,17 +167,66 @@ class TvCertificateManager(private val context: Context) {
         return ctx
     }
 
+    fun resetCredentials() {
+        Log.i(tag, "Resetting stored credentials and certificate...")
+        try {
+            val certFile = File(context.filesDir, certFileName)
+            val keyFile = File(context.filesDir, keyFileName)
+            if (certFile.exists()) certFile.delete()
+            if (keyFile.exists()) keyFile.delete()
+            sslContext = null
+            generateAndPersistCredentials(certFile, keyFile)
+        } catch (e: Exception) {
+            Log.e(tag, "Error resetting credentials", e)
+        }
+    }
+
     /**
      * Computes the pairing secret hash according to the Google Polo pairing protocol:
-     * SHA256(client_certificate_public_key + server_certificate_public_key + pin)
+     * SHA-256(client_modulus + client_exponent + server_modulus + server_exponent + pin_bytes)
      */
     fun computePairingSecret(clientCert: X509Certificate, serverCert: X509Certificate, pin: String): ByteArray {
         val md = MessageDigest.getInstance("SHA-256")
-        md.update(clientCert.publicKey.encoded)
-        md.update(serverCert.publicKey.encoded)
-        val cleanPin = pin.replace("-", "").replace(" ", "").trim().uppercase()
-        md.update(cleanPin.toByteArray(Charsets.UTF_8))
+
+        val clientRsa = clientCert.publicKey as? java.security.interfaces.RSAPublicKey
+        val serverRsa = serverCert.publicKey as? java.security.interfaces.RSAPublicKey
+
+        if (clientRsa != null && serverRsa != null) {
+            val clientMod = stripLeadingZero(clientRsa.modulus.toByteArray())
+            val clientExp = stripLeadingZero(clientRsa.publicExponent.toByteArray())
+            val serverMod = stripLeadingZero(serverRsa.modulus.toByteArray())
+            val serverExp = stripLeadingZero(serverRsa.publicExponent.toByteArray())
+
+            md.update(clientMod)
+            md.update(clientExp)
+            md.update(serverMod)
+            md.update(serverExp)
+        } else {
+            md.update(clientCert.publicKey.encoded)
+            md.update(serverCert.publicKey.encoded)
+        }
+
+        val cleanPin = pin.replace("-", "").replace(" ", "").trim()
+        val pinBytes = try {
+            if (cleanPin.length % 2 == 0 && cleanPin.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+                cleanPin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            } else {
+                cleanPin.uppercase().toByteArray(Charsets.UTF_8)
+            }
+        } catch (_: Exception) {
+            cleanPin.uppercase().toByteArray(Charsets.UTF_8)
+        }
+
+        md.update(pinBytes)
         return md.digest()
+    }
+
+    private fun stripLeadingZero(bytes: ByteArray): ByteArray {
+        return if (bytes.size > 1 && bytes[0] == 0.toByte()) {
+            bytes.copyOfRange(1, bytes.size)
+        } else {
+            bytes
+        }
     }
 
     companion object {

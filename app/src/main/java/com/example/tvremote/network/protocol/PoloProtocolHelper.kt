@@ -24,10 +24,10 @@ object PoloProtocolHelper {
 
     // Polo OuterMessage Status Constants (polo.proto)
     const val STATUS_UNKNOWN = 0
-    const val STATUS_OK = 1
-    const val STATUS_ERROR = 2
-    const val STATUS_BAD_CONFIGURATION = 3
-    const val STATUS_BAD_SECRET = 4
+    const val STATUS_OK = 200
+    const val STATUS_ERROR = 400
+    const val STATUS_BAD_CONFIGURATION = 401
+    const val STATUS_BAD_SECRET = 402
 
     // Encoding Types
     const val ENCODING_TYPE_UNKNOWN = 0
@@ -68,13 +68,52 @@ object PoloProtocolHelper {
         throw IllegalArgumentException("Malformed varint")
     }
 
+    /**
+     * 4-byte Big-Endian framing used by Android TV Polo Pairing Protocol (Port 6467).
+     * Format: [4-byte Big-Endian Length][Protobuf Payload]
+     */
     fun writeFramed(out: OutputStream, payload: ByteArray) {
+        val len = payload.size
+        out.write((len ushr 24) and 0xFF)
+        out.write((len ushr 16) and 0xFF)
+        out.write((len ushr 8) and 0xFF)
+        out.write(len and 0xFF)
+        out.write(payload)
+        out.flush()
+    }
+
+    /**
+     * Reads a 4-byte Big-Endian framed message from the Pairing stream.
+     */
+    fun readFramed(input: InputStream): ByteArray? {
+        val b1 = input.read()
+        if (b1 == -1) return null
+        val b2 = input.read()
+        val b3 = input.read()
+        val b4 = input.read()
+        if (b2 == -1 || b3 == -1 || b4 == -1) return null
+        val length = (b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4
+        if (length <= 0 || length > 65536) return null
+        val buf = ByteArray(length)
+        var total = 0
+        while (total < length) {
+            val count = input.read(buf, total, length - total)
+            if (count == -1) break
+            total += count
+        }
+        return if (total == length) buf else null
+    }
+
+    /**
+     * Varint-delimited framing for Port 6466 Control messages.
+     */
+    fun writeVarintFramed(out: OutputStream, payload: ByteArray) {
         writeVarint(out, payload.size)
         out.write(payload)
         out.flush()
     }
 
-    fun readFramed(input: InputStream): ByteArray? {
+    fun readVarintFramed(input: InputStream): ByteArray? {
         val length = readVarint(input)
         if (length <= 0) return null
         val buf = ByteArray(length)
