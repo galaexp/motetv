@@ -230,17 +230,30 @@ class AndroidTvV2Protocol(private val context: Context) : TvProtocolHandler {
             Log.i(tag, "Submitting pairing code '$cleanPin' to TV...")
 
             // Compute Polo pairing secret SHA-256 hash
-            val secretHash = certManager.computePairingSecret(clientCert, sCert, cleanPin)
-            val secretPacket = PoloProtocolHelper.buildSecretMessage(secretHash, protocolVersion = activeProtocolVersion) // type = 40
+            var secretHash = certManager.computePairingSecret(clientCert, sCert, cleanPin, forceStringBytes = false)
+            var secretPacket = PoloProtocolHelper.buildSecretMessage(secretHash, protocolVersion = activeProtocolVersion) // type = 40
             PoloProtocolHelper.writeFramed(pOut, secretPacket)
             Log.d(tag, "Dispatched Polo Secret (type 40) to TV")
 
             // Read SecretAck (type 41)
-            val secretAckBytes = PoloProtocolHelper.readFramed(pIn)
+            var secretAckBytes = PoloProtocolHelper.readFramed(pIn)
                 ?: throw IllegalStateException("TV did not respond to pairing secret")
 
-            val parsedSecretAck = PoloProtocolHelper.parseOuterMessage(secretAckBytes)
+            var parsedSecretAck = PoloProtocolHelper.parseOuterMessage(secretAckBytes)
             Log.i(tag, "SecretAck response: type=${parsedSecretAck.type}, status=${parsedSecretAck.status}")
+
+            // If STATUS_BAD_SECRET (402), try string-encoded PIN bytes as fallback
+            if (parsedSecretAck.status == PoloProtocolHelper.STATUS_BAD_SECRET) {
+                Log.w(tag, "Received STATUS_BAD_SECRET (402). Retrying secret with string-encoded PIN bytes...")
+                secretHash = certManager.computePairingSecret(clientCert, sCert, cleanPin, forceStringBytes = true)
+                secretPacket = PoloProtocolHelper.buildSecretMessage(secretHash, protocolVersion = activeProtocolVersion)
+                PoloProtocolHelper.writeFramed(pOut, secretPacket)
+
+                secretAckBytes = PoloProtocolHelper.readFramed(pIn)
+                    ?: throw IllegalStateException("TV did not respond to second pairing secret attempt")
+                parsedSecretAck = PoloProtocolHelper.parseOuterMessage(secretAckBytes)
+                Log.i(tag, "Retry SecretAck response: type=${parsedSecretAck.type}, status=${parsedSecretAck.status}")
+            }
 
             if (parsedSecretAck.status != PoloProtocolHelper.STATUS_OK && parsedSecretAck.status != 0 && parsedSecretAck.status != 200) {
                 throw IllegalArgumentException("Invalid PIN code entered (status ${parsedSecretAck.status}). Please check the code on your TV and retry.")

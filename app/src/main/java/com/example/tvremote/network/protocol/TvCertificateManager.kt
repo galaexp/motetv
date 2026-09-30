@@ -185,7 +185,12 @@ class TvCertificateManager(private val context: Context) {
      * Computes the pairing secret hash according to the Google Polo pairing protocol:
      * SHA-256(client_modulus + client_exponent + server_modulus + server_exponent + pin_bytes)
      */
-    fun computePairingSecret(clientCert: X509Certificate, serverCert: X509Certificate, pin: String): ByteArray {
+    fun computePairingSecret(
+        clientCert: X509Certificate,
+        serverCert: X509Certificate,
+        pin: String,
+        forceStringBytes: Boolean = false
+    ): ByteArray {
         val md = MessageDigest.getInstance("SHA-256")
 
         val clientRsa = clientCert.publicKey as? java.security.interfaces.RSAPublicKey
@@ -207,14 +212,18 @@ class TvCertificateManager(private val context: Context) {
         }
 
         val cleanPin = pin.replace("-", "").replace(" ", "").trim()
-        val pinBytes = try {
-            if (cleanPin.length % 2 == 0 && cleanPin.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
-                cleanPin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-            } else {
+        val pinBytes = if (forceStringBytes) {
+            cleanPin.uppercase().toByteArray(Charsets.UTF_8)
+        } else {
+            try {
+                if (cleanPin.length % 2 == 0 && cleanPin.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+                    cleanPin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                } else {
+                    cleanPin.uppercase().toByteArray(Charsets.UTF_8)
+                }
+            } catch (_: Exception) {
                 cleanPin.uppercase().toByteArray(Charsets.UTF_8)
             }
-        } catch (_: Exception) {
-            cleanPin.uppercase().toByteArray(Charsets.UTF_8)
         }
 
         md.update(pinBytes)
