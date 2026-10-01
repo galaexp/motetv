@@ -1,0 +1,85 @@
+syntax = "proto2";
+
+package com.example.tvremote.network.proto;
+
+option java_package = "com.example.tvremote.network.proto";
+option java_outer_classname = "PairingMessageProto";
+
+message PairingMessage {
+    enum Status {
+        UNKNOWN = 0;
+        STATUS_OK = 200;
+        STATUS_ERROR = 400;
+        STATUS_BAD_CONFIGURATION = 401;
+        STATUS_BAD_SECRET = 402;
+    }
+
+    enum ProtocolVersion {
+        UNKNOWN_VERSION = 0;
+        V2 = 2;
+    }
+
+    optional PairingRequest pairing_request = 1;
+    optional PairingOption pairing_option = 2;
+    optional PairingConfiguration pairing_configuration = 3;
+    optional PairingSecret pairing_secret = 4;
+    optional PairingSecretAck pairing_secret_ack = 5;
+
+    optional Status status = 200;
+    optional ProtocolVersion protocol_version = 201;
+}
+
+message PairingRequest {
+    enum Role {
+        UNKNOWN = 0;
+        INPUT = 1;
+        OUTPUT = 2;
+    }
+
+    optional string service_name = 1;
+    optional string client_name = 2;
+}
+
+message PairingOption {
+    enum Role {
+        UNKNOWN = 0;
+        INPUT = 1;
+        OUTPUT = 2;
+    }
+
+    enum EncodingType {
+        UNKNOWN_ENCODING = 0;
+        ALPHANUMERIC = 1;
+        NUMERIC = 2;
+        HEXADECIMAL = 3;
+        QRCODE = 4;
+    }
+
+    message Encoding {
+        optional EncodingType type = 1;
+        optional uint32 symbol_length = 2;
+    }
+
+    repeated Encoding input_encodings = 1;
+    repeated Encoding output_encodings = 2;
+    optional Role preferred_role = 3;
+}
+
+message PairingConfiguration {
+    enum Role {
+        UNKNOWN = 0;
+        INPUT = 1;
+        OUTPUT = 2;
+    }
+
+    optional PairingOption.Encoding encoding = 1;
+    optional Role client_role = 2;
+}
+
+message PairingSecret {
+    optional bytes secret = 1;
+}
+
+message PairingSecretAck {
+    optional bytes secret = 1;
+}

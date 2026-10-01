@@ -188,45 +188,31 @@ class TvCertificateManager(private val context: Context) {
     fun computePairingSecret(
         clientCert: X509Certificate,
         serverCert: X509Certificate,
-        pin: String,
-        forceStringBytes: Boolean = false
+        pin: String
     ): ByteArray {
         val md = MessageDigest.getInstance("SHA-256")
 
-        val clientRsa = clientCert.publicKey as? java.security.interfaces.RSAPublicKey
-        val serverRsa = serverCert.publicKey as? java.security.interfaces.RSAPublicKey
+        val clientRsa = clientCert.publicKey as java.security.interfaces.RSAPublicKey
+        val serverRsa = serverCert.publicKey as java.security.interfaces.RSAPublicKey
 
-        if (clientRsa != null && serverRsa != null) {
-            val clientMod = stripLeadingZero(clientRsa.modulus.toByteArray())
-            val clientExp = stripLeadingZero(clientRsa.publicExponent.toByteArray())
-            val serverMod = stripLeadingZero(serverRsa.modulus.toByteArray())
-            val serverExp = stripLeadingZero(serverRsa.publicExponent.toByteArray())
+        val clientMod = stripLeadingZero(clientRsa.modulus.toByteArray())
+        val clientExp = stripLeadingZero(clientRsa.publicExponent.toByteArray())
+        val serverMod = stripLeadingZero(serverRsa.modulus.toByteArray())
+        val serverExp = stripLeadingZero(serverRsa.publicExponent.toByteArray())
 
-            md.update(clientMod)
-            md.update(clientExp)
-            md.update(serverMod)
-            md.update(serverExp)
-        } else {
-            md.update(clientCert.publicKey.encoded)
-            md.update(serverCert.publicKey.encoded)
+        md.update(clientMod)
+        md.update(clientExp)
+        md.update(serverMod)
+        md.update(serverExp)
+
+        var cleanPin = pin.trim().replace("-", "").replace(" ", "")
+        if (cleanPin.startsWith("0x", ignoreCase = true)) {
+            cleanPin = cleanPin.substring(2)
         }
 
-        val cleanPin = pin.replace("-", "").replace(" ", "").trim()
-        val pinBytes = if (forceStringBytes) {
-            cleanPin.uppercase().toByteArray(Charsets.UTF_8)
-        } else {
-            try {
-                if (cleanPin.length % 2 == 0 && cleanPin.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
-                    cleanPin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-                } else {
-                    cleanPin.uppercase().toByteArray(Charsets.UTF_8)
-                }
-            } catch (_: Exception) {
-                cleanPin.uppercase().toByteArray(Charsets.UTF_8)
-            }
-        }
-
+        val pinBytes = cleanPin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         md.update(pinBytes)
+
         return md.digest()
     }
 

@@ -1,0 +1,59 @@
+syntax = "proto2";
+
+package com.example.tvremote.network.proto;
+
+option java_package = "com.example.tvremote.network.proto";
+option java_outer_classname = "RemoteMessageProto";
+
+message RemoteMessage {
+    optional RemoteConfigure remote_configure = 1;
+    optional RemoteSetActive remote_set_active = 2;
+    optional RemotePingRequest remote_ping_request = 3;
+    optional RemotePingResponse remote_ping_response = 4;
+    optional RemoteKeyInject remote_key_inject = 5;
+    optional RemoteAppLink remote_app_link = 6;
+    optional RemoteReset remote_reset = 7;
+}
+
+message RemoteConfigure {
+    optional int32 code = 1;
+    optional DeviceInfo device_info = 2;
+}
+
+message DeviceInfo {
+    optional string model = 1;
+    optional string make = 2;
+    optional int32 unknown = 3;
+    optional string app_version = 4;
+}
+
+message RemoteSetActive {
+    optional int32 active = 1;
+}
+
+message RemotePingRequest {
+    optional int32 val1 = 1;
+}
+
+message RemotePingResponse {
+    optional int32 val1 = 1;
+}
+
+message RemoteKeyInject {
+    enum Direction {
+        UNKNOWN = 0;
+        SHORT = 1;
+        START = 2;
+        END = 3;
+    }
+
+    optional int32 key_code = 1;
+    optional Direction direction = 2;
+}
+
+message RemoteAppLink {
+    optional string app_link = 1;
+}
+
+message RemoteReset {
+}
